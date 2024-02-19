@@ -7,6 +7,38 @@ from fileselector import VideoFileSelector
 import pickle
 
 
+def create_aligned_points(start_point, end_point, distance_interval):
+    # Convert points to numpy arrays for easier calculation
+    start = np.array(start_point)
+    end = np.array(end_point)
+
+    # Calculate the vector from start to end
+    vector = end - start
+
+    # Calculate the distance between start and end
+    total_distance = np.linalg.norm(vector)
+
+    # Normalize the vector to get the direction
+    direction = vector / total_distance
+
+    # Calculate the number of points to generate
+    num_points = int(total_distance // distance_interval)
+
+    # Initialize the list of points with the start point
+    points_list_10metInv = [start_point]
+
+    # Generate each point
+    for i in range(1, num_points):
+        # Calculate the point's position
+        point = start + direction * (distance_interval * i)
+        # Append the point to the list
+        points_list_10metInv.append(tuple(point))
+
+     #Optionally, add the end point to the list
+    points_list_10metInv.append(end_point)
+
+    return points_list_10metInv
+
 def get_filename_without_extension(path):
     # Split the path to get the filename with extension
     _, filename_with_extension = os.path.split(path)
@@ -150,13 +182,13 @@ class ImageFunctions:
 
     @staticmethod
     def click_event_img4(event, x, y, flags, params):
-        global OriginalImage
+        global InvImage
         handle_click_event10met(event, x, y, points_list_10metInv, InvImage, 'OriginalToInv')
 
     @staticmethod
     def draw_on(points_list, img):
         for point in points_list:
-            cv2.circle(img, point, 5, (255, 0, 0), -1)
+            cv2.circle(img, point, 5, (0,0 , 255), -1)
         return img
 
 # No changes here
@@ -183,7 +215,7 @@ def handle_click_event(event, x, y, points_list, img, window_name):
 
 def handle_click_event10met(event, x, y, points_list, img, window_name):
     if event == cv2.EVENT_LBUTTONDOWN:
-        if len(points_list) < 2:
+        if len(points_list) < 20:
             points_list.append((x, y))
             ImageFunctions.draw_points(img, points_list,window_name)
             print(f"Point added to {window_name}: ({x},{y})")
@@ -266,12 +298,10 @@ def apply_perspective_transform_and_map_points(original_img,src_points, matrix):
             transformed_point = transformed_point / transformed_point[2]  # Normalize to convert from homogenous coordinates
             transformed_point = transformed_point[:2].astype(int).reshape(-1)  # Convert coordinates to integer
             transformed_points.append((transformed_point[0], transformed_point[1]))
-            # Draw the transformed points on the transformed image
-            cv2.circle(InvImage, (transformed_point[0], transformed_point[1]), 5, (0, 255, 0), -1)
 
         # Draw the src_points on the original image for reference
         for pt in src_points:
-            cv2.circle(original_img, pt, 30, (0, 0, 255), -1)
+            cv2.circle(original_img, (int(pt[0]), int(pt[1])), 30, (0, 0, 0), -1)
 
         return InvImage, transformed_points
 
@@ -282,13 +312,13 @@ def apply_inverse_perspective_transform_and_map_points(target_img, dest_points, 
     # Transform dest_points from original_img to target_img
     transformed_points = []
     for pt in dest_points:
-        cv2.circle(target_img, (pt[0], pt[1]), 5, (0, 255, 0), -1)
-        point_homogenous = np.array([*pt, 1]).reshape(-1, 1)
-        transformed_point = matrix_inv.dot(point_homogenous)
-        transformed_point = transformed_point / transformed_point[2]  # Normalize to convert from homogenous coordinates
-        transformed_point = transformed_point[:2].astype(int).reshape(-1)  # Convert coordinates to integer
-        transformed_points.append((transformed_point[0], transformed_point[1]))
-        # Draw the transformed points on the original image
+            cv2.circle(target_img, (int(pt[0]), int(pt[1])), 5, (0, 255, 0), -1)
+            point_homogenous = np.array([*pt, 1]).reshape(-1, 1)
+            transformed_point = matrix_inv.dot(point_homogenous)
+            transformed_point = transformed_point / transformed_point[2]  # Normalize to convert from homogenous coordinates
+            transformed_point = transformed_point[:2].astype(int).reshape(-1)  # Convert coordinates to integer
+            transformed_points.append((transformed_point[0], transformed_point[1]))
+            # Draw the transformed points on the original image
 
     return target_img, transformed_points
 
@@ -406,11 +436,6 @@ while True:
 
     img2 = ImageResizer.ResizeWithAspectRatioAndFill(img2,width=1780, height=1000)
 
-   # k = 1.0
-    #kernel = np.array([[-k, -k, -k], [-k, 1 + 8 * k, -k], [-k, -k, -k]])
-    #frame_img1 = cv2.filter2D(frame_img1, ddepth=-1, kernel=kernel)
-    #frame_img2 = cv2.filter2D(img2, ddepth=-1, kernel=kernel)
-
     frame_img2 = cv2.resize(img2, (img2.shape[1]*scale, img2.shape[0]*scale))
 
     frame_img1 = adjust_fov(frame_img1, fovx/10, fovy/10, (frame_img1.shape[1], frame_img1.shape[0]))
@@ -429,6 +454,15 @@ while True:
         if len(points_list_10metInv) == 2:
             TenMeterLen = calculate_distance(points_list_10metInv[0], points_list_10metInv[1])
             print(TenMeterLen)
+
+        if(len(points_list_10metInv)>9):
+            # Example usage
+            start_point = points_list_10metInv[0]
+            end_point = points_list_10metInv[len(points_list_10metInv)-1]
+            distance_interval = TenMeterLen  # For example, 2 units of distance
+
+            points_list = create_aligned_points(start_point, end_point, distance_interval)
+            points_list_10metInv = points_list
 
         InvImage, detransformed_points = apply_inverse_perspective_transform_and_map_points(InvImage, points_list_10metInv, matrix)
 
