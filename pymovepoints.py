@@ -72,7 +72,7 @@ class ImageFunctions:
     def draw_points(img, points_list, frame_name):
         for point in points_list:
             cv2.circle(img, point, 5, (255, 0, 0), -1)
-        cv2.imshow(frame_name, img)
+        return img
 
     @staticmethod
     def click_event_img1(event, x, y, flags, params):
@@ -314,7 +314,7 @@ while True:
         transformed_image, transformed_points = apply_perspective_transform_and_map_points(original_frame_img1, points_list_10met, matrix)
 
     if transformed_img is not None:
-        original_img_with_points = ImageFunctions.DrawOn(points_list_10met, original_frame_img1)
+        original_img_with_points = ImageFunctions.draw_points(original_frame_img1, points_list_10met,'Original Image with Source Points')
 
         cv2.imshow('Original Image with Source Points', original_img_with_points)
         cv2.imshow('Transformed Image with Transformed Points', transformed_image)
