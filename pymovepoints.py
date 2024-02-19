@@ -1,10 +1,51 @@
 import math
 import cv2
 import numpy as np
+import tkinter as tk
+from tkinter import filedialog
+import os
+
+from pyonchangeGuiclass import ImageClickHandler
+from pyonchangeclass import TrackbarHandler
 
 # Initialize lists to store coordinates
 points_list_img1 = []
 points_list_img2 = []
+
+handler = TrackbarHandler()
+click_handler = ImageClickHandler()
+
+
+def select_video_file():
+    # Create a Tkinter root window and hide it
+    root = tk.Tk()
+    root.withdraw()
+
+    # Open a file dialog to select a video file
+    video_path = filedialog.askopenfilename(title='Select Video File', filetypes=[('Video files', '*.mp4;*.avi;*.mov')])
+
+    if video_path:  # If a file was selected
+        # Extract the directory of the selected video
+        video_directory = os.path.dirname(video_path)
+        # Extract the base name of the video file (without extension)
+        base_name = os.path.basename(video_path).rsplit('.', 1)[0]
+        # Construct the img2 path to be in the "map" directory within the same directory as the video file
+        img2_directory = os.path.join(video_directory, "map")
+        img2_path = os.path.join(img2_directory, f"{base_name}.png")
+
+        # Check if the "map" directory exists, if not, create it
+        if not os.path.exists(img2_directory):
+            os.makedirs(img2_directory)
+
+        # Now you have both paths
+        print(f"Video Path: {video_path}")
+        print(f"Img2 Path: {img2_path}")
+
+        return video_path, img2_path
+    else:
+        print("No file selected.")
+        return None, None
+
 
 def fov_to_intrinsic(fov_x, fov_y, width, height):
     # Convert FoV from degrees to radians
@@ -58,43 +99,6 @@ def adjust_fov(frame, fov_x, fov_y, img_size):
     adjusted_frame = adjusted_frame[y:y + h, x:x + w]
     return adjusted_frame
 
-# This function will remain mostly unchanged
-def draw_points(img, points_list):
-    for point in points_list:
-        cv2.circle(img, point, 5, (255, 0, 0), -1)
-    cv2.imshow('Image1' if img is frame_img1 else 'Image2', img)
-
-# Updated to work with video frames
-def click_event_img1(event, x, y, flags, params):
-    global frame_img1
-    handle_click_event(event, x, y, points_list_img1, frame_img1, 'Image1')
-
-# This function stays the same
-def click_event_img2(event, x, y, flags, params):
-    global img2
-    handle_click_event(event, x, y, points_list_img2, img2, 'Image2')
-
-# No changes here
-def handle_click_event(event, x, y, points_list, img, window_name):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if len(points_list) < 4:
-            points_list.append((x, y))
-            draw_points(img, points_list)
-            print(f"Point added to {window_name}: ({x},{y})")
-        else:
-            print(f"Maximum points reached for {window_name}.")
-    elif event == cv2.EVENT_RBUTTONDOWN:
-        if points_list:
-            points_list.pop()
-            img_copy = original_frame_img1.copy() if window_name == 'Image1' else original_img2.copy()
-            draw_points(img_copy, points_list)
-            if window_name == 'Image1':
-                global frame_img1
-                frame_img1 = img_copy
-            else:
-                global img2
-                img2 = img_copy
-            print(f"Last point removed from {window_name}.")
 
 def apply_perspective_transform():
     if len(points_list_img1) == 4 and len(points_list_img2) == 4:
@@ -110,39 +114,10 @@ def apply_perspective_transform():
 fovx = calculate_fovs(10,1920,1080)
 fovy = calculate_fovs(10,1920,1080)
 
-# Callback function for the trackbar
-def on_fov_changex(trackbarValue):
-    global fovx
-    fovx = trackbarValue
 
-def on_fov_changey(trackbarValue):
-    global fovy
-    fovy = trackbarValue
+# Now call the function to get the paths
+video_path, img2_path = select_video_file()
 
-def on_A(trackbarValue):
-    global a
-    a = trackbarValue
-
-def on_B(trackbarValue):
-    global b
-    b = trackbarValue
-
-def on_C(trackbarValue):
-    global c
-    c = trackbarValue
-
-def on_D(trackbarValue):
-    global d
-    d = trackbarValue
-
-def on_E(trackbarValue):
-    global e
-    e = trackbarValue
-
-
-# Video path
-video_path = 'img1.mp4'  # Replace with the path to your video
-img2_path = 'img1.png'  # Path to your second image
 
 # Load the second image
 original_img2 = cv2.imread(img2_path)
@@ -158,19 +133,19 @@ cv2.namedWindow('Image2', cv2.WINDOW_NORMAL)
 cv2.namedWindow('Image3', cv2.WINDOW_NORMAL)
 cv2.namedWindow('Transformed Image', cv2.WINDOW_NORMAL)
 
-cv2.setMouseCallback('Image1', click_event_img1)
-cv2.setMouseCallback('Image2', click_event_img2)
+cv2.setMouseCallback('Image1', click_handler.click_event_img1)
+cv2.setMouseCallback('Image2', click_handler.click_event_img2)
 
 
 # Create trackbars for FOV adjustment
-cv2.createTrackbar('FOV X', 'Image', 10, 1000, on_fov_changex)  # Assuming FOV range from 0 to 180
-cv2.createTrackbar('FOV Y', 'Image', 10, 1000, on_fov_changey)  # Adjust the range as needed
+cv2.createTrackbar('FOV X', 'Image', 10, 1000, handler.on_fov_changex)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('FOV Y', 'Image', 10, 1000, handler.on_fov_changey)  # Adjust the range as needed
 # Create trackbars for FOV adjustment
-cv2.createTrackbar('A', 'Image', 10, 10000, on_A)  # Assuming FOV range from 0 to 180
-cv2.createTrackbar('B', 'Image', 10, 10000, on_B)  # Adjust the range as needed
-cv2.createTrackbar('C', 'Image', 10, 1000, on_C)  # Assuming FOV range from 0 to 180
-cv2.createTrackbar('D', 'Image', 10, 1000, on_D)  # Adjust the range as needed
-cv2.createTrackbar('E', 'Image', 0, 1000, on_E)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('A', 'Image', 10, 10000, handler.on_A)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('B', 'Image', 10, 10000, handler.on_B)  # Adjust the range as needed
+cv2.createTrackbar('C', 'Image', 10, 1000, handler.on_C)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('D', 'Image', 10, 1000, handler.on_D)  # Adjust the range as needed
+cv2.createTrackbar('E', 'Image', 0, 1000, handler.on_E)  # Assuming FOV range from 0 to 180
 
 
 while True:
@@ -195,7 +170,7 @@ while True:
     original_frame_img1 = frame_img1.copy()
 
     if len(points_list_img1) > 0:
-        draw_points(frame_img1, points_list_img1)
+        click_handler.draw_points(frame_img1, points_list_img1)
 
     cv2.imshow('Image1', frame_img1)
 
