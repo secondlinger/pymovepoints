@@ -14,8 +14,8 @@ from fileselector import VideoFileSelector
 points_list_img1 = []
 points_list_img2 = []
 
-
 points_list_10met  = []
+points_list_10metInv  = []
 
 a = 0.1
 b = -0.2
@@ -90,6 +90,11 @@ class ImageFunctions:
         handle_click_event10met(event, x, y, points_list_10met, OriginalImage, 'Image2')
 
     @staticmethod
+    def click_event_img4(event, x, y, flags, params):
+        global OriginalImage
+        handle_click_event10met(event, x, y, points_list_10metInv, InvImage, 'OriginalToInv')
+
+    @staticmethod
     def draw_on(points_list, img):
         for point in points_list:
             cv2.circle(img, point, 5, (255, 0, 0), -1)
@@ -132,7 +137,7 @@ def handle_click_event10met(event, x, y, points_list, img, window_name):
             points_list.pop()
             img_copy = img.copy()
             ImageFunctions.draw_points(img_copy, points_list,window_name)
-            if window_name == 'Original Image with Source Points':
+            if window_name == 'TenMeterRef':
                 global frame_img1
                 frame_img1 = img_copy
             else:
@@ -204,13 +209,31 @@ def apply_perspective_transform_and_map_points(original_img,src_points , matrix)
             transformed_point = transformed_point[:2].astype(int).reshape(-1)  # Convert coordinates to integer
             transformed_points.append((transformed_point[0], transformed_point[1]))
             # Draw the transformed points on the transformed image
-            cv2.circle(transformed_img, (transformed_point[0], transformed_point[1]), 5, (0, 255, 0), -1)
+            cv2.circle(InvImage, (transformed_point[0], transformed_point[1]), 5, (0, 255, 0), -1)
 
         # Draw the src_points on the original image for reference
         for pt in src_points:
             cv2.circle(original_img, pt, 30, (0, 0, 255), -1)
 
-        return transformed_img, transformed_points
+        return InvImage, transformed_points
+def apply_inverse_perspective_transform_and_map_points(target_img, dest_points, matrix):
+    # Invert the matrix for reverse transformation
+    matrix_inv = np.linalg.inv(matrix)
+
+    # Transform dest_points from original_img to target_img
+    transformed_points = []
+    for pt in dest_points:
+        cv2.circle(target_img, (pt[0], pt[1]), 5, (0, 255, 0), -1)
+        point_homogenous = np.array([*pt, 1]).reshape(-1, 1)
+        transformed_point = matrix_inv.dot(point_homogenous)
+        transformed_point = transformed_point / transformed_point[2]  # Normalize to convert from homogenous coordinates
+        transformed_point = transformed_point[:2].astype(int).reshape(-1)  # Convert coordinates to integer
+        transformed_points.append((transformed_point[0], transformed_point[1]))
+        # Draw the transformed points on the original image
+
+    return target_img, transformed_points
+
+
 
 def apply_perspective_transform():
     if len(points_list_img1) == 4 and len(points_list_img2) == 4:
@@ -218,7 +241,25 @@ def apply_perspective_transform():
         pts2 = np.float32(points_list_img2)
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         transformed_img = cv2.warpPerspective(original_frame_img1, matrix, (img2.shape[1], img2.shape[0]))
-        cv2.imshow('Transformed Image', transformed_img)
+
+        return transformed_img, matrix
+    else:
+        return None, None
+
+def apply_inverse_perspective_transform():
+    if len(points_list_img1) == 4 and len(points_list_img2) == 4:
+        # Points from the second image (destination points)
+        pts2 = np.float32(points_list_img2)
+        # Points from the first image (source points)
+        pts1 = np.float32(points_list_img1)
+
+        # Compute the perspective transform matrix from img2 to img1
+        matrix = cv2.getPerspectiveTransform(pts2, pts1)
+
+        # Apply the inverse transformation to img2 to get back to the perspective of img1
+        # Assuming `original_frame_img2` is the image you want to transform back and `img1` is the target perspective
+        transformed_img = cv2.warpPerspective(InvImage, matrix, (InvImage.shape[1], InvImage.shape[0]))
+
         return transformed_img, matrix
     else:
         return None, None
@@ -232,6 +273,7 @@ video_path, img2_path = video_selector.select_video_file()
 # Load the second image
 original_img2 = cv2.imread(img2_path)
 OriginalImage = cv2.imread(img2_path)
+InvImage = cv2.imread(img2_path)
 img2 = original_img2.copy()
 
 # Initialize video capture
@@ -242,13 +284,16 @@ cap = cv2.VideoCapture(video_path)
 cv2.namedWindow('Image')
 cv2.namedWindow('Image1')
 cv2.namedWindow('Image2')
-cv2.namedWindow('Transformed Image', cv2.WINDOW_NORMAL)
-cv2.namedWindow('Original Image with Source Points', cv2.WINDOW_NORMAL)
+cv2.namedWindow('TenMeterRef', cv2.WINDOW_NORMAL)
+cv2.namedWindow('OriginalToInv', cv2.WINDOW_NORMAL)
+
 
 
 cv2.setMouseCallback('Image1', ImageFunctions.click_event_img1)
 cv2.setMouseCallback('Image2', ImageFunctions.click_event_img2)
-cv2.setMouseCallback('Original Image with Source Points', ImageFunctions.click_event_img3)
+cv2.setMouseCallback('TenMeterRef', ImageFunctions.click_event_img3)
+cv2.setMouseCallback('OriginalToInv', ImageFunctions.click_event_img4)
+
 
 
 # Create trackbars for FOV adjustment
@@ -289,7 +334,6 @@ while True:
     frame_img1 = cv2.resize(frame, (frame.shape[1]*scale, frame.shape[0]*scale))
     img2 = cv2.resize(img2, (img2.shape[1]*scale, img2.shape[0]*scale))
 
-   # frame = ResizeWithAspectRatioAndFill(frame_img1, width=1780, height=1000)  # Resize by width OR
     img2 = ImageResizer.ResizeWithAspectRatioAndFill(img2,width=1780, height=1000)  # Resize by width OR
 
     k = 1.0
@@ -305,24 +349,26 @@ while True:
     if len(points_list_img2) > 0:
         ImageFunctions.draw_points(frame_img2, points_list_img2, 'Image2')
 
-    cv2.imshow('Image1', frame_img1)
-    cv2.imshow('Image2', frame_img2)
-
-    transformed_img, matrix = apply_perspective_transform()
+    InvImage, matrix = apply_perspective_transform()
 
     if matrix is not None:
-        transformed_image, transformed_points = apply_perspective_transform_and_map_points(original_frame_img1, points_list_10met, matrix)
+        apply_perspective_transform_and_map_points(original_frame_img1, points_list_10met, matrix)
+        InvImage, detransformed_points = apply_inverse_perspective_transform_and_map_points(InvImage, points_list_10metInv, matrix)
 
-    if transformed_img is not None:
-        original_img_with_points = ImageFunctions.draw_points(original_frame_img1, points_list_10met,'Original Image with Source Points')
+    if InvImage is not None:
+        original_img_with_points = ImageFunctions.draw_points(original_frame_img1, points_list_10met,'TenMeterRef')
+        frame_img1 = ImageFunctions.draw_points(frame_img1, detransformed_points, 'Image1')
 
-        cv2.imshow('Original Image with Source Points', original_img_with_points)
-        cv2.imshow('Transformed Image with Transformed Points', transformed_image)
+        cv2.imshow('TenMeterRef', original_img_with_points)
+        cv2.imshow('OriginalToInv', InvImage)
 
-        blended_image = blend_images(transformed_img, img2, 0.5)
+        blended_image = blend_images(InvImage, img2, 0.5)
 
-        if transformed_img is not None:
+        if InvImage is not None:
             cv2.imshow('Image3', blended_image)
+
+    cv2.imshow('Image1', frame_img1)
+    cv2.imshow('Image2', frame_img2)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
