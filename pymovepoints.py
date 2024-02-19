@@ -5,7 +5,7 @@ import numpy as np
 from ImageResizer import ImageResizer
 from fileselector import VideoFileSelector
 import pickle
-
+import pyautogui
 
 def create_aligned_points(start_point, end_point, distance_interval):
     # Convert points to numpy arrays for easier calculation
@@ -45,7 +45,6 @@ def get_filename_without_extension(path):
     # Split the filename from its extension
     filename_without_extension, _ = os.path.splitext(filename_with_extension)
     return filename_without_extension
-
 
 def SaveData():
     global points_list_img1, points_list_img2, points_list_10met, points_list_10metInv, TenMeterLen, fovx, fovy, a, b, c, d, e
@@ -116,6 +115,31 @@ c = 0.001
 d = 0.001
 e = 0.0
 
+
+def resize_points(points, original_size, new_size):
+    """
+    Resize points based on a change in window size.
+
+    Parameters:
+    - points: List of tuples containing (x, y) coordinates.
+    - original_size: Tuple of (original_width, original_height).
+    - new_size: Tuple of (new_width, new_height).
+
+    Returns:
+    - List of tuples with updated (x, y) coordinates.
+    """
+    original_width, original_height = original_size
+    new_width, new_height = new_size
+
+    # Calculate scaling factors
+    scale_x = new_width / original_width
+    scale_y = new_height / original_height
+
+    # Apply scaling to points
+    resized_points = [(int(x * scale_x), int(y * scale_y)) for x, y in points]
+
+    return resized_points
+
 class TrackbarCallbacks:
     def __init__(self):
         pass
@@ -155,6 +179,19 @@ class TrackbarCallbacks:
         global e
         e = trackbarValue
 
+def resize_point(point, original_size, new_size):
+    original_width, original_height = original_size
+    new_width, new_height = new_size
+
+    # Calculate scaling factors
+    scale_x = new_width / original_width
+    scale_y = new_height / original_height
+
+    # Apply scaling to points
+    resized_points = (int(point[0] * scale_x), int(point[1] * scale_y))
+
+    return resized_points
+
 class ImageFunctions:
     def __init__(self):
         pass
@@ -167,13 +204,13 @@ class ImageFunctions:
 
     @staticmethod
     def click_event_img1(event, x, y, flags, params):
-        global frame_img1
-        handle_click_event(event, x, y, points_list_img1, frame_img1, 'Image1')
+        global OriginImage
+        handle_click_event(event, x, y, points_list_img1, OriginImage, 'Image1')
 
     @staticmethod
     def click_event_img2(event, x, y, flags, params):
-        global img2
-        handle_click_event(event, x, y, points_list_img2, img2, 'Image2')
+        global MapImage
+        handle_click_event(event, x, y, points_list_img2, MapImage, 'Image2')
 
     @staticmethod
     def click_event_img3(event, x, y, flags, params):
@@ -182,8 +219,8 @@ class ImageFunctions:
 
     @staticmethod
     def click_event_img4(event, x, y, flags, params):
-        global InvImage
-        handle_click_event10met(event, x, y, points_list_10metInv, InvImage, 'OriginalToInv')
+        global OriginalToInvImage
+        handle_click_event10met(event, x, y, points_list_10metInv, OriginalToInvImage, 'OriginalToInv')
 
     @staticmethod
     def draw_on(points_list, img):
@@ -206,11 +243,11 @@ def handle_click_event(event, x, y, points_list, img, window_name):
             img_copy = frame.copy() if window_name == 'Image1' else original_img2.copy()
             ImageFunctions.draw_points(img_copy, points_list,window_name)
             if window_name == 'Image1':
-                global frame_img1
-                frame_img1 = img_copy
+                global OriginImage
+                OriginImage = img_copy
             else:
-                global img2
-                img2 = img_copy
+                global MapImage
+                MapImage = img_copy
             print(f"Last point removed from {window_name}.")
 
 def handle_click_event10met(event, x, y, points_list, img, window_name):
@@ -227,11 +264,11 @@ def handle_click_event10met(event, x, y, points_list, img, window_name):
             img_copy = img.copy()
             ImageFunctions.draw_points(img_copy, points_list,window_name)
             if window_name == 'TenMeterRef':
-                global frame_img1
-                frame_img1 = img_copy
+                global OriginImage
+                OriginImage = img_copy
             else:
-                global img2
-                img2 = img_copy
+                global MapImage
+                MapImage = img_copy
             print(f"Last point removed from {window_name}.")
 
 
@@ -303,7 +340,7 @@ def apply_perspective_transform_and_map_points(original_img,src_points, matrix):
         for pt in src_points:
             cv2.circle(original_img, (int(pt[0]), int(pt[1])), 30, (0, 0, 0), -1)
 
-        return InvImage, transformed_points
+        return OriginalToInvImage, transformed_points
 
 def apply_inverse_perspective_transform_and_map_points(target_img, dest_points, matrix):
     # Invert the matrix for reverse transformation
@@ -327,7 +364,7 @@ def apply_perspective_transform():
         pts1 = np.float32(points_list_img1)
         pts2 = np.float32(points_list_img2)
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        transformed_img = cv2.warpPerspective(original_frame_img1, matrix, (img2.shape[1], img2.shape[0]))
+        transformed_img = cv2.warpPerspective(original_frame_img1, matrix, (MapImage.shape[1], MapImage.shape[0]))
 
         return transformed_img, matrix
     else:
@@ -345,7 +382,7 @@ def apply_inverse_perspective_transform():
 
         # Apply the inverse transformation to img2 to get back to the perspective of img1
         # Assuming `original_frame_img2` is the image you want to transform back and `img1` is the target perspective
-        transformed_img = cv2.warpPerspective(InvImage, matrix, (InvImage.shape[1], InvImage.shape[0]))
+        transformed_img = cv2.warpPerspective(OriginalToInvImage, matrix, (OriginalToInvImage.shape[1], OriginalToInvImage.shape[0]))
 
         return transformed_img, matrix
     else:
@@ -359,22 +396,18 @@ video_path, img2_path = video_selector.select_video_file()
 # Load the second image
 original_img2 = cv2.imread(img2_path)
 OriginalImage = cv2.imread(img2_path)
-InvImage = cv2.imread(img2_path)
-img2 = original_img2.copy()
+OriginalToInvImage = cv2.imread(img2_path)
+MapImage = original_img2.copy()
 
 # Initialize video capture
 cap = cv2.VideoCapture(video_path)
 
-
 data_loaded = load_data_from_file()
-
 
 # Access your data, using get to provide default values if keys are missing
 points_list_img1 = data_loaded.get('points_list_img1', [])
 points_list_img2 = data_loaded.get('points_list_img2', [])
 # Continue for other data as necessary
-
-
 # Example of accessing trackbar values, providing default if not found
 trackbar_values = data_loaded.get('trackbar_values', {})
 fovx = trackbar_values.get('FOV X', 10)
@@ -391,12 +424,10 @@ e = data_loaded.get('e', 0)
 cv2.namedWindow('Image')
 cv2.namedWindow('Image1')
 cv2.namedWindow('Image2')
-cv2.namedWindow('TenMeterRef', cv2.WINDOW_NORMAL)
 cv2.namedWindow('OriginalToInv', cv2.WINDOW_NORMAL)
 
 cv2.setMouseCallback('Image1', ImageFunctions.click_event_img1)
 cv2.setMouseCallback('Image2', ImageFunctions.click_event_img2)
-cv2.setMouseCallback('TenMeterRef', ImageFunctions.click_event_img3)
 cv2.setMouseCallback('OriginalToInv', ImageFunctions.click_event_img4)
 
 # Create trackbars for FOV adjustment
@@ -413,6 +444,8 @@ cv2.createTrackbar('E', 'Image', int(e), 1000, TrackbarCallbacks.on_E)  # Assumi
 #----------------------------------------------------------------------------------
 
 scale = 1
+IsMouseMove = False
+MouseMoveIndex = 0
 
 while True:
     ret, frame = cap.read()
@@ -428,32 +461,31 @@ while True:
         key = cv2.waitKey(1) & 0xFF
         continue
 
-    img2 = original_img2
+    MapImage = original_img2
 
     # Resize the frame to match img2's display size if needed
-    frame_img1 = cv2.resize(frame, (frame.shape[1]*scale, frame.shape[0]*scale))
-    img2 = cv2.resize(img2, (img2.shape[1]*scale, img2.shape[0]*scale))
+    OriginImage = cv2.resize(frame, (frame.shape[1] * scale, frame.shape[0] * scale))
+    MapImage = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
 
-    img2 = ImageResizer.ResizeWithAspectRatioAndFill(img2,width=1780, height=1000)
+    MapImage = ImageResizer.ResizeWithAspectRatioAndFill(MapImage, width=1780, height=1000)
 
-    frame_img2 = cv2.resize(img2, (img2.shape[1]*scale, img2.shape[0]*scale))
+    frame_img2 = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
 
-    frame_img1 = adjust_fov(frame_img1, fovx/10, fovy/10, (frame_img1.shape[1], frame_img1.shape[0]))
-    original_frame_img1 = frame_img1.copy()
+    OriginImage = adjust_fov(OriginImage, fovx / 10, fovy / 10, (OriginImage.shape[1], OriginImage.shape[0]))
+    original_frame_img1 = OriginImage.copy()
 
     if len(points_list_img1) > 0:
-        ImageFunctions.draw_points(frame_img1, points_list_img1, 'Image1')
+        ImageFunctions.draw_points(OriginImage, points_list_img1, 'Image1')
     if len(points_list_img2) > 0:
         ImageFunctions.draw_points(frame_img2, points_list_img2, 'Image2')
 
-    InvImage, matrix = apply_perspective_transform()
+    OriginalToInvImage, matrix = apply_perspective_transform()
 
     if matrix is not None:
         apply_perspective_transform_and_map_points(original_frame_img1, points_list_10metInv, matrix)
 
         if len(points_list_10metInv) == 2:
             TenMeterLen = calculate_distance(points_list_10metInv[0], points_list_10metInv[1])
-            print(TenMeterLen)
 
         if(len(points_list_10metInv)>9):
             # Example usage
@@ -464,29 +496,45 @@ while True:
             points_list = create_aligned_points(start_point, end_point, distance_interval)
             points_list_10metInv = points_list
 
-        InvImage, detransformed_points = apply_inverse_perspective_transform_and_map_points(InvImage, points_list_10metInv, matrix)
+        OriginalToInvImage, detransformed_points = apply_inverse_perspective_transform_and_map_points(OriginalToInvImage, points_list_10metInv, matrix)
 
-    if InvImage is not None:
-        original_img_with_points = ImageFunctions.draw_points(original_frame_img1, points_list_10met,'TenMeterRef')
-        frame_img1 = ImageFunctions.draw_points(frame_img1, detransformed_points, 'Image1')
+    if OriginalToInvImage is not None:
+        OriginImage = ImageFunctions.draw_points(OriginImage, detransformed_points, 'Image1')
 
-        cv2.imshow('TenMeterRef', original_img_with_points)
-        cv2.imshow('OriginalToInv', InvImage)
+        cv2.imshow('OriginalToInv', OriginalToInvImage)
 
-        blended_image = blend_images(InvImage, img2, 0.5)
+        if OriginalToInvImage is not None:
+            Calibration_image = blend_images(OriginalToInvImage, MapImage, 0.5)
+            cv2.imshow('Calibration', Calibration_image)
 
-        if InvImage is not None:
-            cv2.imshow('Image3', blended_image)
-
-    cv2.imshow('Image1', frame_img1)
+    cv2.imshow('Image1', OriginImage)
     cv2.imshow('Image2', frame_img2)
 
     key = cv2.waitKey(1) & 0xFF
+
     if key == ord('q'):
         break
 
     if key == ord('s'):
         SaveData()
+
+    if key == ord('m'):
+        IsMouseMove = not IsMouseMove
+        MouseMoveIndex = 0
+
+    if IsMouseMove:
+        #detransformed_points
+        windowsize = (1776, 707)
+        basepos = (136, 287)
+        if MouseMoveIndex >= len(detransformed_points):
+            IsMouseMove = False
+        else:
+            resizedwindowpos = resize_point(detransformed_points[MouseMoveIndex], (OriginImage.shape[1], OriginImage.shape[0]), (windowsize[0], windowsize[1]))
+            resizedwindowpos = (resizedwindowpos[0] + basepos[0], resizedwindowpos[1] + basepos[1])
+            pyautogui.moveTo(resizedwindowpos[0], resizedwindowpos[1])
+            pyautogui.click()
+            MouseMoveIndex += 1
+
 
 cap.release()
 cv2.destroyAllWindows()
