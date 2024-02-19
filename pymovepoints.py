@@ -62,8 +62,6 @@ class TrackbarCallbacks:
         global e
         e = trackbarValue
 
-# This function will remain mostly unchanged
-
 class ImageFunctions:
     def __init__(self):
         pass
@@ -100,8 +98,6 @@ class ImageFunctions:
             cv2.circle(img, point, 5, (255, 0, 0), -1)
         return img
 
-
-
 # No changes here
 def handle_click_event(event, x, y, points_list, img, window_name):
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -126,7 +122,7 @@ def handle_click_event(event, x, y, points_list, img, window_name):
 
 def handle_click_event10met(event, x, y, points_list, img, window_name):
     if event == cv2.EVENT_LBUTTONDOWN:
-        if len(points_list) < 20:
+        if len(points_list) < 2:
             points_list.append((x, y))
             ImageFunctions.draw_points(img, points_list,window_name)
             print(f"Point added to {window_name}: ({x},{y})")
@@ -216,6 +212,7 @@ def apply_perspective_transform_and_map_points(original_img,src_points , matrix)
             cv2.circle(original_img, pt, 30, (0, 0, 255), -1)
 
         return InvImage, transformed_points
+
 def apply_inverse_perspective_transform_and_map_points(target_img, dest_points, matrix):
     # Invert the matrix for reverse transformation
     matrix_inv = np.linalg.inv(matrix)
@@ -232,8 +229,6 @@ def apply_inverse_perspective_transform_and_map_points(target_img, dest_points, 
         # Draw the transformed points on the original image
 
     return target_img, transformed_points
-
-
 
 def apply_perspective_transform():
     if len(points_list_img1) == 4 and len(points_list_img2) == 4:
@@ -264,7 +259,6 @@ def apply_inverse_perspective_transform():
     else:
         return None, None
 
-
 video_selector = VideoFileSelector()
 
 # Now call the function to get the paths
@@ -287,14 +281,10 @@ cv2.namedWindow('Image2')
 cv2.namedWindow('TenMeterRef', cv2.WINDOW_NORMAL)
 cv2.namedWindow('OriginalToInv', cv2.WINDOW_NORMAL)
 
-
-
 cv2.setMouseCallback('Image1', ImageFunctions.click_event_img1)
 cv2.setMouseCallback('Image2', ImageFunctions.click_event_img2)
 cv2.setMouseCallback('TenMeterRef', ImageFunctions.click_event_img3)
 cv2.setMouseCallback('OriginalToInv', ImageFunctions.click_event_img4)
-
-
 
 # Create trackbars for FOV adjustment
 cv2.createTrackbar('FOV X', 'Image', 10, 1000, TrackbarCallbacks.on_fov_change_x)  # Assuming FOV range from 0 to 180
@@ -308,9 +298,6 @@ cv2.createTrackbar('D', 'Image', 0, 1000, TrackbarCallbacks.on_D)  # Adjust the 
 cv2.createTrackbar('E', 'Image', 0, 1000, TrackbarCallbacks.on_E)  # Assuming FOV range from 0 to 180
 
 #----------------------------------------------------------------------------------
-
-
-
 
 scale = 2
 
