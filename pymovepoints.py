@@ -156,28 +156,28 @@ class TrackbarCallbacks:
 
     @staticmethod
     def on_A(trackbarValue):
-        global a
-        a = trackbarValue
+        global a1
+        a1 = trackbarValue
 
     @staticmethod
     def on_B(trackbarValue):
-        global b
-        b = trackbarValue
+        global b1
+        b1 = trackbarValue
 
     @staticmethod
     def on_C(trackbarValue):
-        global c
-        c = trackbarValue
+        global c1
+        c1 = trackbarValue
 
     @staticmethod
     def on_D(trackbarValue):
-        global d
-        d = trackbarValue
+        global d1
+        d1 = trackbarValue
 
     @staticmethod
     def on_E(trackbarValue):
-        global e
-        e = trackbarValue
+        global e1
+        e1 = trackbarValue
 
 def resize_point(point, original_size, new_size):
     original_width, original_height = original_size
@@ -231,7 +231,7 @@ class ImageFunctions:
 # No changes here
 def handle_click_event(event, x, y, points_list, img, window_name):
     if event == cv2.EVENT_LBUTTONDOWN:
-        if len(points_list) < 4:
+        if len(points_list) < 8:
             points_list.append((x, y))
             ImageFunctions.draw_points(img, points_list,window_name)
             print(f"Point added to {window_name}: ({x},{y})")
@@ -413,13 +413,14 @@ trackbar_values = data_loaded.get('trackbar_values', {})
 fovx = trackbar_values.get('FOV X', 10)
 fovy = trackbar_values.get('FOV Y', 10)
 
-a = data_loaded.get('a', 0)
-b = data_loaded.get('b', 0)
-c = data_loaded.get('c', 0)
-d = data_loaded.get('d', 0)
-e = data_loaded.get('e', 0)
+a1 = data_loaded.get('a', 0)
+b1 = data_loaded.get('b', 0)
+c1 = data_loaded.get('c', 0)
+d1 = data_loaded.get('d', 0)
+e1 = data_loaded.get('e', 0)
 
 #----------------------------------------------------------------------------------
+
 # Windows for display
 cv2.namedWindow('Image')
 cv2.namedWindow('Image1')
@@ -435,11 +436,11 @@ cv2.createTrackbar('FOV X', 'Image', fovx, 1000, TrackbarCallbacks.on_fov_change
 cv2.createTrackbar('FOV Y', 'Image', fovy, 1000, TrackbarCallbacks.on_fov_change_y)  # Adjust the range as needed
 
 # Create trackbars for FOV adjustment
-cv2.createTrackbar('A', 'Image', int(a), 10000, TrackbarCallbacks.on_A)  # Assuming FOV range from 0 to 180
-cv2.createTrackbar('B', 'Image', int(b), 10000, TrackbarCallbacks.on_B)  # Adjust the range as needed
-cv2.createTrackbar('C', 'Image', int(c), 1000, TrackbarCallbacks.on_C)  # Assuming FOV range from 0 to 180
-cv2.createTrackbar('D', 'Image', int(d), 1000, TrackbarCallbacks.on_D)  # Adjust the range as needed
-cv2.createTrackbar('E', 'Image', int(e), 1000, TrackbarCallbacks.on_E)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('A', 'Image', int(a1), 10000, TrackbarCallbacks.on_A)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('B', 'Image', int(b1), 10000, TrackbarCallbacks.on_B)  # Adjust the range as needed
+cv2.createTrackbar('C', 'Image', int(c1), 1000, TrackbarCallbacks.on_C)  # Assuming FOV range from 0 to 180
+cv2.createTrackbar('D', 'Image', int(d1), 1000, TrackbarCallbacks.on_D)  # Adjust the range as needed
+cv2.createTrackbar('E', 'Image', int(e1), 1000, TrackbarCallbacks.on_E)  # Assuming FOV range from 0 to 180
 
 #----------------------------------------------------------------------------------
 
@@ -448,6 +449,10 @@ IsMouseMove = False
 MouseMoveIndex = 0
 
 while True:
+    cap.read()
+    cap.read()
+    cap.read()
+    cap.read()
     ret, frame = cap.read()
     if not ret:
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Restart video
@@ -467,9 +472,10 @@ while True:
     OriginImage = cv2.resize(frame, (frame.shape[1] * scale, frame.shape[0] * scale))
     MapImage = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
 
+
     MapImage = ImageResizer.ResizeWithAspectRatioAndFill(MapImage, width=1780, height=1000)
 
-    frame_img2 = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
+    MapImage = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
 
     OriginImage = adjust_fov(OriginImage, fovx / 10, fovy / 10, (OriginImage.shape[1], OriginImage.shape[0]))
     original_frame_img1 = OriginImage.copy()
@@ -477,7 +483,7 @@ while True:
     if len(points_list_img1) > 0:
         ImageFunctions.draw_points(OriginImage, points_list_img1, 'Image1')
     if len(points_list_img2) > 0:
-        ImageFunctions.draw_points(frame_img2, points_list_img2, 'Image2')
+        ImageFunctions.draw_points(MapImage, points_list_img2, 'Image2')
 
     OriginalToInvImage, matrix = apply_perspective_transform()
 
@@ -508,7 +514,7 @@ while True:
             cv2.imshow('Calibration', Calibration_image)
 
     cv2.imshow('Image1', OriginImage)
-    cv2.imshow('Image2', frame_img2)
+    cv2.imshow('Image2', MapImage)
 
     key = cv2.waitKey(1) & 0xFF
 
@@ -524,8 +530,8 @@ while True:
 
     if IsMouseMove:
         #detransformed_points
-        windowsize = (1776, 707)
-        basepos = (136, 287)
+        windowsize = (852, 547)
+        basepos = (598, 358)
         if MouseMoveIndex >= len(detransformed_points):
             IsMouseMove = False
         else:
