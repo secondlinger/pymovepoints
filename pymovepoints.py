@@ -447,6 +447,7 @@ cv2.createTrackbar('E', 'Image', int(e1), 1000, TrackbarCallbacks.on_E)  # Assum
 scale = 1
 IsMouseMove = False
 MouseMoveIndex = 0
+donealign = False
 
 while True:
     cap.read()
@@ -493,12 +494,12 @@ while True:
         if len(points_list_10metInv) == 2:
             TenMeterLen = calculate_distance(points_list_10metInv[0], points_list_10metInv[1])
 
-        if(len(points_list_10metInv)==10):
+        if(len(points_list_10metInv)>9 and donealign == False):
             # Example usage
             start_point = points_list_10metInv[0]
             end_point = points_list_10metInv[len(points_list_10metInv)-1]
             distance_interval = TenMeterLen  # For example, 2 units of distance
-
+            donealign = True
             points_list = create_aligned_points(start_point, end_point, distance_interval)
             points_list_10metInv = points_list
 
