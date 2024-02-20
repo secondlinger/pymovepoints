@@ -493,7 +493,7 @@ while True:
         if len(points_list_10metInv) == 2:
             TenMeterLen = calculate_distance(points_list_10metInv[0], points_list_10metInv[1])
 
-        if(len(points_list_10metInv)>9):
+        if(len(points_list_10metInv)==10):
             # Example usage
             start_point = points_list_10metInv[0]
             end_point = points_list_10metInv[len(points_list_10metInv)-1]
