@@ -234,7 +234,8 @@ def handle_click_event(event, x, y, points_list, img, window_name):
         if len(points_list) < 4:
             points_list.append((x, y))
             ImageFunctions.draw_points(img, points_list,window_name)
-            print(f"Point added to {window_name}: ({x},{y})")
+            print(f"Point added t"
+                  f"o {window_name}: ({x},{y})")
         else:
             print(f"Maximum points reached for {window_name}.")
     elif event == cv2.EVENT_RBUTTONDOWN:
