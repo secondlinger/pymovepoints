@@ -231,7 +231,7 @@ class ImageFunctions:
 # No changes here
 def handle_click_event(event, x, y, points_list, img, window_name):
     if event == cv2.EVENT_LBUTTONDOWN:
-        if len(points_list) < 8:
+        if len(points_list) < 4:
             points_list.append((x, y))
             ImageFunctions.draw_points(img, points_list,window_name)
             print(f"Point added to {window_name}: ({x},{y})")
@@ -424,7 +424,7 @@ e1 = data_loaded.get('e', 0)
 # Windows for display
 cv2.namedWindow('Image')
 cv2.namedWindow('Image1')
-cv2.namedWindow('Image2')
+cv2.namedWindow('Image2', cv2.WINDOW_NORMAL)
 cv2.namedWindow('OriginalToInv', cv2.WINDOW_NORMAL)
 
 cv2.setMouseCallback('Image1', ImageFunctions.click_event_img1)
@@ -444,7 +444,7 @@ cv2.createTrackbar('E', 'Image', int(e1), 1000, TrackbarCallbacks.on_E)  # Assum
 
 #----------------------------------------------------------------------------------
 
-scale = 1
+scale = 2
 IsMouseMove = False
 MouseMoveIndex = 0
 donealign = False
@@ -471,7 +471,7 @@ while True:
 
     # Resize the frame to match img2's display size if needed
     OriginImage = cv2.resize(frame, (frame.shape[1] * scale, frame.shape[0] * scale))
-    MapImage = cv2.resize(MapImage, (MapImage.shape[1] * scale, MapImage.shape[0] * scale))
+    MapImage = cv2.resize(MapImage, (MapImage.shape[1] , MapImage.shape[0] ))
 
 
     MapImage = ImageResizer.ResizeWithAspectRatioAndFill(MapImage, width=1780, height=1000)
